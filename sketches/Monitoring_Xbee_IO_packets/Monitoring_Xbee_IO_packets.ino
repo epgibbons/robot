@@ -116,10 +116,17 @@ void loop() { // run over and over
                  Serial.println(" is NOT enabled");
               }
             }
-            Serial.print("CheckSum = ");
-            Serial.println(mySerial.read(), HEX);
-            Serial.println("");
-            
+            byte check = mySerial.read();
+            byte verify=0;
+            for( int i=0; i< sizeof(frameData); i++){
+              verify += frameData[i];
+            }
+            if( check + verify != 0xFF){
+              Serial.println("Check sum is correct");
+            }
+            else {
+              Serial.println("Check sum is incorrect");
+            }
          }
       }
     }
