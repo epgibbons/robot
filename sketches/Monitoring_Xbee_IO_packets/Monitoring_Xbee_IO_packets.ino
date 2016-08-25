@@ -21,10 +21,15 @@ void setup() {
   }
 
 
-  Serial.println("Goodnight moon!");
+  Serial.println("Arduino built in serial line connected");
 
   // set the data rate for the SoftwareSerial port
   mySerial.begin(9600);
+
+  while (!mySerial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  Serial.println("Local Xbee serial line connected");
 
 }
 
@@ -32,7 +37,7 @@ void loop() { // run over and over
   if (mySerial.available()) {
     byte start_delim=mySerial.read();
     if( start_delim == 0x7e){
-      Serial.println("Start found. ");
+      Serial.println("Start (0x7E) found. ");
       byte len[2];
       if( mySerial.readBytes(len,sizeof(len))==sizeof(len)){
         Serial.print("Length = ");
@@ -40,16 +45,10 @@ void loop() { // run over and over
         Serial.println(length);
         byte frameData[length];
 
-        Serial.print("sizeof(frameData) = ");
-        Serial.println(sizeof(frameData));
         if( mySerial.readBytes(frameData,sizeof(frameData))==sizeof(frameData)){
           int j=0;
           byte api = frameData[j++];
 
-          for( int k=0; k< sizeof(frameData); k++){
-            Serial.println(frameData[k], HEX);
-          }
-          
           Serial.print("API = ");
           Serial.println(api,HEX);
           if( api==0x82){
@@ -78,29 +77,48 @@ void loop() { // run over and over
             byte channelIndicator2 = frameData[j++];
             Serial.print("Channel indicator 2 = ");
             Serial.println(channelIndicator2, BIN);
-            if( ((channelIndicator1 & 0x1) == 0x1) || (channelIndicator2 != 0x0)){
-              Serial.println("A DIO line is enabled");
+            if( (channelIndicator1 & 0x1) || (channelIndicator2 != 0x0)){
               byte dio1 = frameData[j++];
-              Serial.print("dio1 = ");
-              Serial.println(dio1, HEX);
               byte dio2 = frameData[j++];
-              Serial.print("dio2 = ");
-              Serial.println(dio2, HEX);
+              for( int dio=0; dio < 8; dio++){
+                Serial.print("DIO");
+                Serial.print(dio);
+                if( channelIndicator2 & (0x1<<dio) ){
+                  Serial.print(" is enabled = ");
+                  Serial.println( (dio2 & 0x1<<dio) != 0);
+                }
+                else {
+                  Serial.println(" is NOT enabled");
+                }
+                
+              }
+              if( channelIndicator1 & 0x1){
+                Serial.print("DIO8 is enabled = ");
+                Serial.println( dio1 & 0x1);
+              }
+              else {
+                Serial.println("DIO8 is NOT enabled");
+
+              }
             }
             for(int adc=0; adc< 7; adc++){
+              Serial.print("ADC A");
+              Serial.print(adc);
               byte checkCode = 0x1<<(adc+1);
-              if( (channelIndicator1 & checkCode) == checkCode){
-                 Serial.print("ADC A");
-                 Serial.print(adc);
+              if( channelIndicator1 & checkCode){
                  Serial.print(" is enabled  = ");
                  byte msb = frameData[j++];
                  byte lsb = frameData[j++];
                  int val = (msb<<8) + lsb;
                  Serial.println( val, DEC);
               }
+              else {
+                 Serial.println(" is NOT enabled");
+              }
             }
             Serial.print("CheckSum = ");
             Serial.println(mySerial.read(), HEX);
+            Serial.println("");
             
          }
       }
